@@ -1,19 +1,26 @@
 <?php
 session_start();
-
-// Session security: Regenerate session ID to prevent session fixation
 if (!isset($_SESSION['user_id'])) {
     header("Location: index.html");
     exit();
 }
 
-if (ini_get("session.use_only_cookies") == 0) {
-    session_destroy();
-    header("Location: index.html");
+include 'db.php';
+
+// Handle user deletion
+if (isset($_GET['delete_id'])) {
+    $delete_id = $_GET['delete_id'];
+    $sql = "DELETE FROM users WHERE id = $delete_id";
+    $conn->query($sql);
+    header("Location: dashboard.php?deleted=true");
     exit();
 }
 
+// Fetch users
+$sql = "SELECT * FROM users"; 
+$result = $conn->query($sql);
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -21,34 +28,94 @@ if (ini_get("session.use_only_cookies") == 0) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.0/css/bootstrap.min.css">
 </head>
 <body class="bg-light">
 
     <!-- Navbar -->
     <nav class="navbar navbar-dark bg-dark px-4 p-4">
         <span class="navbar-text text-white">
-            Welcome, <em><span class="name fw-bold"><?php echo htmlspecialchars($_SESSION['full_name'], ENT_QUOTES, 'UTF-8'); ?></span></em>!
+        Welcome, <em><span class="name fw-bold"><?php echo htmlspecialchars($_SESSION['full_name'], ENT_QUOTES, 'UTF-8'); ?></span></em>!
         </span>
         <a href="logout.php" class="btn btn-danger">Logout</a>
     </nav>
 
-    <!-- Alert Message (Initially Hidden) -->
+    <?php
+// Add a success message if a user was deleted
+if (isset($_GET['deleted'])) {
+    echo '<div class="container mt-5">';
+    echo '<div id="deleteAlert" class="alert alert-success alert-dismissible fade show" role="alert">';
+    echo 'User successfully deleted!';
+    echo '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+    echo '</div>';
+    echo '</div>';
+}
+?>
+
+
     <div class="container mt-5">
-        <div id="loginAlert" class="alert alert-success alert-dismissible fade show" role="alert">
-            You have successfully logged in!
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
+        <h2 class="text-center">List of Users</h2>
+
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Full Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                if ($result->num_rows > 0) {
+                    while ($row = $result->fetch_assoc()) {
+                        echo "<tr>
+                                <td>{$row['id']}</td>
+                                <td>{$row['full_name']}</td>
+                                <td>{$row['phone']}</td>
+                                <td>{$row['email']}</td>
+                                <td>{$row['created_at']}</td>
+                                <td>
+                                    <a href='?delete_id={$row['id']}' class='btn btn-danger btn-sm'>Delete</a>
+                                </td>
+                            </tr>";
+                    }
+                } else {
+                    echo "<tr><td colspan='6' class='text-center'>No users found</td></tr>";
+                }
+                ?>
+            </tbody>
+        </table>
     </div>
 
+
+
+
+
+
+
     <script>
-        $(document).ready(function () {
-            // Show Bootstrap alert
-            $("#loginAlert").fadeIn(500).delay(1000).fadeOut(500);
+    $(document).ready(function () {
+
+        $("#deleteAlert").fadeIn(500).delay(700).fadeOut(500);
+
+        $('.btn-danger').on('click', function (e) {
+            e.preventDefault(); 
+            var link = $(this).attr('href');
+            if (confirm('Are you sure you want to delete this user?')) {
+                window.location.href = link;
+            }
         });
-    </script>
+    });
+</script>
+
 
 </body>
 </html>
